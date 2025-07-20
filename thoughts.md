@@ -1,55 +1,31 @@
-# Rough thoughts
+# Thoughts from exercise
 
-Workload profile (rather than consumption profile)
+## Learnings - Azure Container Apps
 
-...
-
-Environment Type: Workload profiles
-
-Consumption Plan
-(Includes Consumption GPU - in West US 3, Australia East, and Sweden Central)
-
-4 vCPU
-8 Gi Memory
-
-- Limits to scaling? But perfect for most small apps...
-- what would larger apps look like?
-- would we need lots of app environments?
-
-Powershell or bash? :-)
-
-I'll help you create a private Azure Container App setup with VNets and private endpoints using Azure CLI commands. Let me create an updated version of your documentation that focuses on private networking.
-
-Made changes.
-
-## Key Components Added
-
-1. **Dedicated Resource Group**: `private-container-apps-rg` to keep all resources organized
-2. **Virtual Network**: Custom VNet with proper subnet configuration
-3. **Private Container Apps Environment**: Uses `--internal-only true` for network isolation
-4. **Private Ingress**: Container App uses internal ingress instead of external
-5. **Private Endpoints**: Provides secure private connectivity
-6. **Private DNS**: Custom DNS zone for internal name resolution
-7. **Test VM**: Optional VM for testing private access
-
-## Security Benefits
-
-- **Network Isolation**: All traffic stays within your private network
-- **No Public Access**: Container App is not accessible from the internet
-- **Private Endpoints**: Secure connectivity without exposing public endpoints
-- **Custom DNS**: Internal name resolution within your VNet
-
-## Usage Notes
-
-- The Container Apps subnet requires a minimum `/21` prefix (2048 addresses)
-- The setup creates separate subnets for different purposes (Container Apps, Private Endpoints, Test VM)
-- All resources are grouped in a single resource group for easy cleanup
-- The test VM allows you to verify private connectivity from within the VNet
-
-The commands are organized logically and include verification steps to ensure everything is working correctly. You can run the cleanup command to delete the entire resource group when you're done testing.
-
-### General thoughts
-
-- Container Apps Environments take an age to delete
+- The Container Apps subnet requires a minimum `/21` prefix (2048 addresses). That's quite a big range. Am I sure this is required?
+- The PowerShell objects are hard to work with - they don't seem to contain the latest changes/features
+- The AZ CLI isn't great for ACA - it is down as being `preview`. Which surprises me after 2+ years, but the quality matches this - I've had quite a lot of problems with the documentation being poor, or a number of instances where it just doesn't work. Examples are the `command` and `args` parameters, which don't allow the proper values to be passed through. I had to use a YAML file as a workaround.
+- Although I can get the ASA apps to scale to zero - if I want to use a private DNS Zone, this isn't free. Although would be cheap enough for enterprise purposes.
+- It take a while to run, almost 10 minutes for the relatively simple setup. Main points are ACA environment, the private DNS and the private DNS endpoints.
+- Container Apps Environments take an age to delete. They seem to get `scheduled`
 - Azure creates additional Resource Groups to support it - that you can't administer
-- Load Balancing seems to be costing me money!
+- Struggling to get the `azure containerapps exec` command to run commands on the main app container. I had to just interactively exec into the jumper, and run the commands from there.
+- I love being able to set env vars on the jumper, so that you can just do `curl $APP_URL`
+- Having the jumper die after 10 minutes seems to work quite well.
+
+## Learnings - Playbooks
+
+- I think these could be useful
+- Very Python focused
+- DevContainers are therefore a requirement to keep things tidy
+- I like being able to create Markdown automatically using `.git/hooks/pre-commit` hooks
+- I like being able to remove the playbook output using the `.git/hooks/pre-commit` hooks
+- Couldn't find a nice way to stop the playbook running all the way through, so had to hack an `exit 1`
+- Playbook code sections were a pain, until I realised I needed to configure it to the use the `bash` kernel, but the `shellscript` language in the code blocks.
+- Playbooks needed a bit of work so that they work on both Ubuntu and MacOS (still haven't tested it on Ubuntu, WSL or Windows to be fair)
+
+## To Do
+
+- Custom main app, that is a REST API. Returning HTML when I make a request is a little naff.
+- Try out the GPU support (West US 3, Australia East, and Sweden Central)
+- Get the `exec` working to run commands (might I have to use the REST API directly?)
