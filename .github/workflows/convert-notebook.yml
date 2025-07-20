@@ -1,0 +1,53 @@
+name: Convert Notebook to Markdown
+
+on:
+  push:
+    paths:
+      - 'playbooks/*.ipynb'
+    branches: [ master, main ]
+  pull_request:
+    paths:
+      - 'playbooks/*.ipynb'
+    branches: [ master, main ]
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install nbconvert
+      run: |
+        pip install nbconvert
+        
+    - name: Convert notebooks to markdown
+      run: |
+        # Create markdown directory if it doesn't exist
+        mkdir -p markdown
+        
+        # Find all .ipynb files in playbooks folder and convert them to markdown
+        find playbooks -name "*.ipynb" -type f | while read -r notebook; do
+          echo "Converting $notebook to markdown..."
+          # Get the filename without path and extension
+          filename=$(basename "$notebook" .ipynb)
+          # Convert notebook to markdown and save in markdown folder
+          jupyter nbconvert --to markdown "$notebook" --output-dir markdown --output "$filename"
+        done
+        
+    - name: Commit and push if changed
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        if ! git diff --cached --exit-code; then
+          git commit -m "Auto-update markdown documentation from playbooks [skip ci]"
+          git push
+        else
+          echo "No changes to commit"
