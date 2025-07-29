@@ -26,7 +26,7 @@
     }
   },
 
-  "postCreateCommand": "az extension add --name containerapp --upgrade",
+  "postCreateCommand": "az extension add --name containerapp --upgrade && git config core.autocrlf input",
   
   "forwardPorts": [8888],
   
