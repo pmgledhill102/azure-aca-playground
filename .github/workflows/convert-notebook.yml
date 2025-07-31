@@ -27,6 +27,54 @@ jobs:
       run: |
         pip install nbconvert
         
+    - name: Install additional dependencies
+      run: |
+        pip install nbformat
+        
+    - name: Fix Unicode issues in notebooks
+      run: |
+        python3 -c "
+        import json
+        import os
+        from pathlib import Path
+
+        def clean_string(text):
+            if not isinstance(text, str):
+                return text
+            cleaned = ''
+            for char in text:
+                if 0xD800 <= ord(char) <= 0xDFFF:
+                    print(f'Found surrogate character, replacing')
+                    cleaned += '�'
+                else:
+                    cleaned += char
+            return cleaned
+
+        def clean_cell(cell):
+            if isinstance(cell, dict):
+                return {key: clean_cell(value) for key, value in cell.items()}
+            elif isinstance(cell, list):
+                return [clean_cell(item) for item in cell]
+            elif isinstance(cell, str):
+                return clean_string(cell)
+            else:
+                return cell
+
+        playbooks_dir = Path('playbooks')
+        for notebook_file in playbooks_dir.glob('*.ipynb'):
+            print(f'Processing {notebook_file}...')
+            try:
+                with open(notebook_file, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()
+                notebook = json.loads(content)
+                cleaned_notebook = clean_cell(notebook)
+                with open(notebook_file, 'w', encoding='utf-8') as f:
+                    json.dump(cleaned_notebook, f, indent=1, ensure_ascii=False)
+                print(f'✅ Successfully processed {notebook_file}')
+            except Exception as e:
+                print(f'❌ Error processing {notebook_file}: {e}')
+        "
+        
     - name: Convert notebooks to markdown
       run: |
         # Create markdown directory if it doesn't exist
@@ -38,7 +86,10 @@ jobs:
           # Get the filename without path and extension
           filename=$(basename "$notebook" .ipynb)
           # Convert notebook to markdown and save in markdown folder
-          jupyter nbconvert --to markdown "$notebook" --output-dir markdown --output "$filename"
+          jupyter nbconvert --to markdown "$notebook" --output-dir markdown --output "$filename" || {
+            echo "❌ Failed to convert $notebook"
+            exit 1
+          }
         done
         
     - name: Commit and push if changed
